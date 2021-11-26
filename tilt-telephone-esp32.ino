@@ -86,7 +86,7 @@ void indicateSection(int blinks = 3) {
     Serial.println();
     digitalWrite(LED_BUILTIN, LOW); // clear LED status
     // Blink three times in 1 second for begining scan
-    for (int x = 0; x < ((blinks * 2) - 1); x++) {
+    for (int x = 0; x < (blinks * 2); x++) {
         digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN)); // update blinking LED
         delay(166.5);
     }
