@@ -14,18 +14,17 @@
 #define ENDIAN_CHANGE_U16(x) ((((x)&0xFF00) >> 8) + (((x)&0xFF) << 8))
 #define uS_TO_M_FACTOR 60000000ULL
 
-class Tilt {
-    public: 
-        char *color;
-        float gravity;
-        float temp;
+struct Tilt {
+    char* color;
+    float gravity;
+    float temp;
 };
 
 const char* ntpServer = "pool.ntp.org"; // for getting time
 const long pstOffset_sec = -28800;
 const int daylightOffset_sec = 3600;
-const int loopInterval = 1; // In minutes
-const int bleScanTime = 5; // In seconds
+const int loopInterval = 15; // In minutes
+const int bleScanTime = 30; // In seconds
 const int postRequestTimeout = 5; // In seconds
 Tilt *foundTilts[8]; // Max one of each color
 int curTiltIndex = -1;
@@ -45,23 +44,23 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
             {
                 BLEBeacon oBeacon = BLEBeacon();
                 oBeacon.setData(strManufacturerData);
-                Tilt *curTilt = new Tilt();
-                const char *uuid = oBeacon.getProximityUUID().toString().c_str();
-                if (uuid == "10bb95a4-b1c5-444b-b512-1370f02d74de") {
+                Tilt *curTilt = new Tilt;
+                const String uuid = (String)oBeacon.getProximityUUID().toString().c_str();
+                if (uuid == "de742df0-7013-12b5-444b-b1c510bb95a4") {
                     curTilt->color = "Red";
-                } else if (uuid == "20bb95a4-b1c5-444b-b512-1370f02d74de") {
+                } else if (uuid == "de742df0-7013-12b5-444b-b1c520bb95a4") {
                     curTilt->color = "Green";
-                } else if (uuid == "30bb95a4-b1c5-444b-b512-1370f02d74de") {
+                } else if (uuid == "de742df0-7013-12b5-444b-b1c530bb95a4") {
                     curTilt->color = "Black";
-                } else if (uuid == "40bb95a4-b1c5-444b-b512-1370f02d74de") {
+                } else if (uuid == "de742df0-7013-12b5-444b-b1c540bb95a4") {
                     curTilt->color = "Purple";
-                } else if (uuid == "50bb95a4-b1c5-444b-b512-1370f02d74de") {
+                } else if (uuid == "de742df0-7013-12b5-444b-b1c550bb95a4") {
                     curTilt->color = "Orange";
-                } else if (uuid == "60bb95a4-b1c5-444b-b512-1370f02d74de") {
+                } else if (uuid == "de742df0-7013-12b5-444b-b1c560bb95a4") {
                     curTilt->color = "Blue";
-                } else if (uuid == "70bb95a4-b1c5-444b-b512-1370f02d74de") {
+                } else if (uuid == "de742df0-7013-12b5-444b-b1c570bb95a4") {
                     curTilt->color = "Yellow";
-                } else if (uuid == "80bb95a4-b1c5-444b-b512-1370f02d74de") {
+                } else if (uuid == "de742df0-7013-12b5-444b-b1c580bb95a4") {
                     curTilt->color = "Pink";
                 } else {
                     return;
@@ -71,19 +70,31 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                 curTilt->temp = ENDIAN_CHANGE_U16(oBeacon.getMajor());
                 curTiltIndex++;
                 foundTilts[curTiltIndex] = curTilt;
-                Serial.println("\tFound " + String(curTilt->color) + " Tilt:");
-                Serial.println("\t\t Temp:" + String(curTilt->temp));
-                Serial.println("\t\t SG:" + String(curTilt->gravity));
+                Serial.print("Found ");
+                Serial.print(curTilt->color);
+                Serial.print(" Tilt: ");
+                Serial.print("Temp: ");
+                Serial.print(curTilt->temp);
+                Serial.print(" SG: ");
+                Serial.println(curTilt->gravity);
             }
         }
-        digitalWrite(LED_BUILTIN, (millis() / 1000) % 2); // update blinking LED
     }
 };
+
+void indicateSection(int blinks = 3) {
+    Serial.println();
+    digitalWrite(LED_BUILTIN, LOW); // clear LED status
+    // Blink three times in 1 second for begining scan
+    for (int x = 0; x < ((blinks * 2) - 1); x++) {
+        digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN)); // update blinking LED
+        delay(166.5);
+    }
+}
 
 void cleanupAndSleep() {
     Serial.flush();
     WiFi.disconnect(true);
-    WiFi.mode(WIFI_OFF);
     esp_bt_controller_disable();
     esp_sleep_enable_timer_wakeup(loopInterval * uS_TO_M_FACTOR);
     delay(1000); // delay to be sure timer was set
@@ -93,9 +104,13 @@ void cleanupAndSleep() {
 void setup()
 {
     Serial.begin(115200);
+    delay(10); // to open serial
     pinMode(LED_BUILTIN, OUTPUT); // set up onboard LED
     esp_bt_controller_enable(ESP_BT_MODE_BLE); // turn on bluetooth
+    Serial.println("Initializing");
 
+    // BLE scan for tilts
+    indicateSection(1);
     Serial.println("Scanning for Tilts...");
     BLEDevice::init("Tilt Telephone");
     BLEScan *pBLEScan = BLEDevice::getScan(); //create new scan
@@ -105,50 +120,60 @@ void setup()
     pBLEScan->setWindow(100); // less or equal setInterval value
     pBLEScan->start(bleScanTime, false);
     pBLEScan->clearResults(); // delete results fromBLEScan buffer to release memory
-    digitalWrite(LED_BUILTIN, LOW); // clear LED status
 
     if (curTiltIndex >= 0)
     {
         // Connect to WiFi
-        Serial.println("Connecting to " + String(ssid));
-        WiFi.mode(WIFI_STA);
-        WiFi.setHostname("Tilt Telephone");
+        indicateSection(2);
+        Serial.print("Connect to ");
+        Serial.println(ssid);
         WiFi.begin(ssid, password);
+        Serial.print("Connecting");
         while (WiFi.status() != WL_CONNECTED) {
             delay(500);
             Serial.print(".");
-            digitalWrite(LED_BUILTIN, (millis() / 1000) % 2); // blink LED while connecting
         }
         Serial.println("");
-        Serial.println("\tConnected... IP address: " + WiFi.localIP());
-        digitalWrite(LED_BUILTIN, LOW);
+        Serial.print("Connected. IP address: "); 
+        Serial.println(WiFi.localIP());
 
         // Congifure time now that we have WiFi
-        Serial.println("Requesting current time...");
+        indicateSection(3);
         configTime(pstOffset_sec, daylightOffset_sec, ntpServer);
+        Serial.println("Requesting current time...");
         struct tm timeInfo;
         if (!getLocalTime(&timeInfo)) {
             Serial.println(">>> Failed to obtain time !");
             cleanupAndSleep();
         }
-        Serial.println("\tCurrent time: " +
-                    String(timeInfo.tm_mon) + 
-                    "/" + String(timeInfo.tm_mday) +
-                    "/" + String(timeInfo.tm_year) +
-                    " " + String(timeInfo.tm_hour) + 
-                    ":" + String(timeInfo.tm_min) + 
-                    ":" + String(timeInfo.tm_sec));
+        Serial.print("Current time: ");
+        Serial.print(timeInfo.tm_mon); 
+        Serial.print("/");
+        Serial.print(timeInfo.tm_mday); 
+        Serial.print("/");
+        Serial.print(timeInfo.tm_year); 
+        Serial.print(" ");
+        Serial.print(timeInfo.tm_hour); 
+        Serial.print(":");
+        Serial.print(timeInfo.tm_min); 
+        Serial.print(":");
+        Serial.println(timeInfo.tm_sec);
         
         // Connect to cloud service
-        Serial.println("Connecting to " + String(host));
+        indicateSection(4);
+        Serial.print("Connecting to ");
+        Serial.println(host);
         WiFiClient client;
         if (!client.connect(host, httpPort)) {
-            Serial.println(">>> Connection to " + String(host) + " failed !");
+            Serial.print(">>> Connection to ");
+            Serial.print(host);
+            Serial.println(" failed !");
             cleanupAndSleep();
         }
         Serial.println("\tConnected");
 
         // Log found tilts to cloud
+        indicateSection(5);
         for (int x = 0; x <= curTiltIndex; x++)
         {
             String url = "/tilt";
@@ -182,7 +207,6 @@ void setup()
                     client.stop();
                     cleanupAndSleep();
                 }
-                digitalWrite(LED_BUILTIN, (millis() / 1000) % 2); // blink every second while waiting
             }
 
             // Read all the lines of the reply from server and print them to Serial
@@ -190,7 +214,7 @@ void setup()
                 String line = client.readStringUntil('\r');
                 Serial.print(line);
             }
-            digitalWrite(LED_BUILTIN, LOW);
+            Serial.println();
         }
     } else {
         Serial.println("No tilts found.");

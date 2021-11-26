@@ -1,4 +1,7 @@
 {
-    "configuration": "PSRAM=disabled,PartitionScheme=default,FlashFreq=80,UploadSpeed=921600,DebugLevel=none",
-    "board": "esp32:esp32:d32_pro"
+    "sketch": "tilt-telephone-esp32.ino",
+    "port": "COM3",
+    "board": "esp32:esp32:d32_pro",
+    "configuration": "PSRAM=disabled,PartitionScheme=default,FlashFreq=80,UploadSpeed=115200,DebugLevel=none",
+    "output": "./build"
 }
