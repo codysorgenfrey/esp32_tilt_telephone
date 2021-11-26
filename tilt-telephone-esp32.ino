@@ -93,6 +93,7 @@ void indicateSection(int blinks = 3) {
 }
 
 void cleanupAndSleep() {
+    digitalWrite(LED_BUILTIN, LOW); // clear LED status
     Serial.flush();
     WiFi.disconnect(true);
     esp_bt_controller_disable();
