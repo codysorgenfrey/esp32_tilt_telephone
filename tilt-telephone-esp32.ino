@@ -16,8 +16,8 @@
 
 struct Tilt {
     char* color;
-    float gravity;
-    float temp;
+    double gravity;
+    double temp;
 };
 
 const char* ntpServer = "pool.ntp.org"; // for getting time
@@ -66,7 +66,8 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                     return;
                 }
                 
-                curTilt->gravity = ENDIAN_CHANGE_U16(oBeacon.getMinor()) * 0.001;
+                curTilt->gravity = ENDIAN_CHANGE_U16(oBeacon.getMinor());
+                curTilt->gravity *= 0.001;
                 curTilt->temp = ENDIAN_CHANGE_U16(oBeacon.getMajor());
                 curTiltIndex++;
                 foundTilts[curTiltIndex] = curTilt;
@@ -74,9 +75,9 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                 Serial.print(curTilt->color);
                 Serial.print(" Tilt: ");
                 Serial.print("Temp: ");
-                Serial.print(curTilt->temp);
+                Serial.print(String(curTilt->temp, 1));
                 Serial.print(" SG: ");
-                Serial.println(curTilt->gravity);
+                Serial.println(String(curTilt->gravity, 3));
             }
         }
     }
@@ -182,9 +183,9 @@ void setup()
             url += privateKey;
             
             String content = "Temp=";
-            content += foundTilts[x]->temp;
+            content += String(foundTilts[x]->temp, 1);
             content += "&SG=";
-            content += foundTilts[x]->gravity;
+            content += String(foundTilts[x]->gravity, 3);
             content += "&Color=";
             content += foundTilts[x]->color;
             content += "&Timepoint=";
