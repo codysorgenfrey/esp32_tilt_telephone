@@ -66,7 +66,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                     return;
                 }
                 
-                curTilt->gravity = ENDIAN_CHANGE_U16(oBeacon.getMinor());
+                curTilt->gravity = ENDIAN_CHANGE_U16(oBeacon.getMinor()) * 0.001;
                 curTilt->temp = ENDIAN_CHANGE_U16(oBeacon.getMajor());
                 curTiltIndex++;
                 foundTilts[curTiltIndex] = curTilt;
