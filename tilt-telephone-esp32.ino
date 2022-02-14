@@ -13,6 +13,7 @@
 
 #define ENDIAN_CHANGE_U16(x) ((((x)&0xFF00) >> 8) + (((x)&0xFF) << 8))
 #define uS_TO_M_FACTOR 60000000ULL
+#define LED_BUILTIN 2
 
 struct Tilt {
     char* color;
