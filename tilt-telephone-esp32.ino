@@ -104,10 +104,18 @@ void cleanupAndSleep() {
     esp_deep_sleep_start();
 }
 
-void setup()
-{
+String formattedDateTime(struct tm *timeInfo) {
+    time_t t = mktime(timeInfo);
+    char buf[20];
+    strftime(buf, sizeof(buf), "%m/%d/%Y %H:%M:%S", localtime(&t));
+    return String(buf);
+}
+
+void setup() {
     Serial.begin(115200);
-    delay(10); // to open serial
+    while (!Serial) {
+        ; // wait for serial port to connect. Needed for native USB port only
+    }
     pinMode(LED_BUILTIN, OUTPUT); // set up onboard LED
     esp_bt_controller_enable(ESP_BT_MODE_BLE); // turn on bluetooth
     Serial.println("Initializing");
@@ -124,8 +132,14 @@ void setup()
     pBLEScan->start(bleScanTime, false);
     pBLEScan->clearResults(); // delete results fromBLEScan buffer to release memory
 
-    if (curTiltIndex >= 0)
-    {
+    // test without tilt present
+    // foundTilts[0] = new Tilt;
+    // foundTilts[0]->color = "Black";
+    // foundTilts[0]->gravity = 1.072;
+    // foundTilts[0]->temp = 66.0;
+    // curTiltIndex = 0;
+
+    if (curTiltIndex >= 0) {
         // Connect to WiFi
         indicateSection(2);
         Serial.print("Connect to ");
@@ -150,17 +164,7 @@ void setup()
             cleanupAndSleep();
         }
         Serial.print("Current time: ");
-        Serial.print(timeInfo.tm_mon); 
-        Serial.print("/");
-        Serial.print(timeInfo.tm_mday); 
-        Serial.print("/");
-        Serial.print(timeInfo.tm_year); 
-        Serial.print(" ");
-        Serial.print(timeInfo.tm_hour); 
-        Serial.print(":");
-        Serial.print(timeInfo.tm_min); 
-        Serial.print(":");
-        Serial.println(timeInfo.tm_sec);
+        Serial.println(formattedDateTime(&timeInfo));
         
         // Connect to cloud service
         indicateSection(4);
@@ -190,12 +194,7 @@ void setup()
             content += "&Color=";
             content += foundTilts[x]->color;
             content += "&Timepoint=";
-            content += String(timeInfo.tm_mon) + 
-                    "\%2F" + String(timeInfo.tm_mday) +
-                    "\%2F" + String(timeInfo.tm_year) +
-                    "\%20" + String(timeInfo.tm_hour) + 
-                    "\%3A" + String(timeInfo.tm_min) + 
-                    "\%3A" + String(timeInfo.tm_sec);
+            content += formattedDateTime(&timeInfo);
 
             // This will send the request to the server
             client.print(String("POST ") + url + " HTTP/1.1\r\n" +
